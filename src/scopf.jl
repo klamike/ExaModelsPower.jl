@@ -148,16 +148,16 @@ function scopf_model(
     # to, w.r.t reactive power
     c5 = ExaModels.constraint(
         core,
-        q[b.t_idx, k] +
+        (q[b.t_idx, k] +
         b.c8 * vm[b.t_bus, k]^2 +
         b.c2 * (vm[b.t_bus, k] * vm[b.f_bus, k] * cos(va[b.t_bus, k] - va[b.f_bus, k])) -
         b.c1 * (vm[b.t_bus, k] * vm[b.f_bus, k] * sin(va[b.t_bus, k] - va[b.f_bus, k])) for
-        (b, k) in data.idx_branch
+        (b, k) in data.idx_branch),
     )
     # Difference of angles
     c6 = ExaModels.constraint(
         core,
-        va[b.f_bus, k] - va[b.t_bus, k] for (b, k) in data.idx_branch
+        (va[b.f_bus, k] - va[b.t_bus, k] for (b, k) in data.idx_branch),
         lcon = repeat(data.angmin, data.K),
         ucon = repeat(data.angmax, data.K),
     )
@@ -211,4 +211,4 @@ function scopf_model(
     return model, vars
 
 end
-
+ 
