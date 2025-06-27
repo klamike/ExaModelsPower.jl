@@ -1,9 +1,9 @@
 module ExaModelsPower
 
 import JLD2
-import Downloads
 import ExaModels: ExaCore, variable, constraint, ExaModel, objective, constraint!, convert_array
 import PowerModels
+import PGLib
 
 include("parser.jl")
 include("opf.jl")
