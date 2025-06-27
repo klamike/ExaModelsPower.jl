@@ -1,6 +1,7 @@
 module ExaModelsPower
 
 import JLD2
+import PGLib
 import ExaModels: ExaCore, variable, constraint, ExaModel, objective, constraint!, convert_array
 import PowerModels
 import PGLib
