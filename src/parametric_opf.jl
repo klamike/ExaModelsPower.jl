@@ -1,4 +1,20 @@
-function build_polar_opf(data; backend = nothing, T=Float64, kwargs...)
+function c_active_power_balance_demand_polar_nodemand(b, vm)
+    return + b.gs * vm^2
+end
+
+function c_reactive_power_balance_demand_polar_nodemand(b, vm)
+    return - b.bs * vm^2
+end
+
+function c_active_power_balance_demand_rect_nodemand(b, vr, vim)
+    return + b.gs * (vr^2 + vim^2)
+end
+
+function c_reactive_power_balance_demand_rect_nodemand(b, vr, vim)
+    return - b.bs * (vr^2 + vim^2)
+end
+
+function build_polar_opf_demand_parametric(data; backend = nothing, T=Float64, kwargs...)
     core = ExaCore(T; backend = backend)
 
     va = variable(core, length(data.bus);)
@@ -12,6 +28,9 @@ function build_polar_opf(data; backend = nothing, T=Float64, kwargs...)
 
     pg = variable(core, length(data.gen); lvar = data.pmin, uvar = data.pmax)
     qg = variable(core, length(data.gen); lvar = data.qmin, uvar = data.qmax)
+
+    pd = parameter(core, [b.pd for b in data.bus])
+    qd = parameter(core, [b.qd for b in data.bus])
 
     p = variable(core, length(data.arc); lvar = -data.rate_a, uvar = data.rate_a)
     q = variable(core, length(data.arc); lvar = -data.rate_a, uvar = data.rate_a)
@@ -40,9 +59,9 @@ function build_polar_opf(data; backend = nothing, T=Float64, kwargs...)
         ucon = data.angmax,
     )
 
-    c_active_power_balance = constraint(core, c_active_power_balance_demand_polar(b, vm[b.i]) for b in data.bus)
+    c_active_power_balance = constraint(core, pd[b.i] + c_active_power_balance_demand_polar_nodemand(b, vm[b.i]) for b in data.bus)
 
-    c_reactive_power_balance = constraint(core, c_reactive_power_balance_demand_polar(b, vm[b.i]) for b in data.bus)
+    c_reactive_power_balance = constraint(core, qd[b.i] + c_reactive_power_balance_demand_polar_nodemand(b, vm[b.i]) for b in data.bus)
 
     c_active_power_balance_arcs = constraint!(core, c_active_power_balance, a.bus => p[a.i] for a in data.arc)
     c_reactive_power_balance_arcs = constraint!(core, c_reactive_power_balance, a.bus => q[a.i] for a in data.arc)
@@ -85,10 +104,10 @@ function build_polar_opf(data; backend = nothing, T=Float64, kwargs...)
         c_to_thermal_limit = c_to_thermal_limit
     )
 
-    return model, vars, cons
+    return model, vars, cons, (pd=pd, qd=qd)
 end
 
-function build_rect_opf(data; backend = nothing, T=Float64, kwargs...)
+function build_rect_opf_demand_parametric(data; backend = nothing, T=Float64, kwargs...)
     core = ExaCore(T; backend = backend)
 
     vr = variable(core, length(data.bus), start = fill!(similar(data.bus, Float64), 1.0))
@@ -96,6 +115,9 @@ function build_rect_opf(data; backend = nothing, T=Float64, kwargs...)
 
     pg = variable(core, length(data.gen); lvar = data.pmin, uvar = data.pmax)
     qg = variable(core, length(data.gen); lvar = data.qmin, uvar = data.qmax)
+
+    pd = parameter(core, [b.pd for b in data.bus])
+    qd = parameter(core, [b.qd for b in data.bus])
 
     p = variable(core, length(data.arc); lvar = -data.rate_a, uvar = data.rate_a)
     q = variable(core, length(data.arc); lvar = -data.rate_a, uvar = data.rate_a)
@@ -125,9 +147,9 @@ function build_rect_opf(data; backend = nothing, T=Float64, kwargs...)
         ucon = data.angmax,
     )
 
-    c_active_power_balance = constraint(core, c_active_power_balance_demand_rect(b, vr[b.i], vim[b.i]) for b in data.bus)
+    c_active_power_balance = constraint(core, pd[b.i] + c_active_power_balance_demand_rect_nodemand(b, vr[b.i], vim[b.i]) for b in data.bus)
 
-    c_reactive_power_balance = constraint(core, c_reactive_power_balance_demand_rect(b, vr[b.i], vim[b.i]) for b in data.bus)
+    c_reactive_power_balance = constraint(core, qd[b.i] + c_reactive_power_balance_demand_rect_nodemand(b, vr[b.i], vim[b.i]) for b in data.bus)
 
     c_active_power_balance_arcs = constraint!(core, c_active_power_balance, a.bus => p[a.i] for a in data.arc)
     c_reactive_power_balance_arcs = constraint!(core, c_reactive_power_balance, a.bus => q[a.i] for a in data.arc)
@@ -177,28 +199,10 @@ function build_rect_opf(data; backend = nothing, T=Float64, kwargs...)
         c_voltage_magnitude = c_voltage_magnitude
     )
 
-    return model, vars, cons
+    return model, vars, cons, (pd=pd, qd=qd)
 end
 
-"""
-    opf_model(filename; backend, T, form)
-
-Return `ExaModel`, variables, and constraints for a static AC Optimal Power Flow (ACOPF) problem from the given file.
-
-# Arguments
-- `filename::String`: Path to the data file.
-- `backend`: The solver backend to use. Default if nothing.
-- `T`: The numeric type to use (default is `Float64`).
-- `form`: Voltage representation, either `:polar` or `:rect`. Default is `:polar`.
-- `kwargs...`: Additional keyword arguments passed to the model builder.
-
-# Returns
-A vector `(model, variables, constraints)`:
-- `model`: An `ExaModel` object.
-- `variables`: NamedTuple of model variables.
-- `constraints`: NamedTuple of model constraints.
-"""
-function opf_model(
+function opf_model_demand_parametric(
     filename;
     backend = nothing,
     T = Float64,
@@ -210,9 +214,9 @@ function opf_model(
     data = convert_data(data, backend)
 
     if form == :polar
-        return build_polar_opf(data, backend = backend, T=T, kwargs...)
+        return build_polar_opf_demand_parametric(data, backend = backend, T=T, kwargs...)
     elseif form == :rect
-        return build_rect_opf(data, backend = backend, T=T, kwargs...)
+        return build_rect_opf_demand_parametric(data, backend = backend, T=T, kwargs...)
     else
         error("Invalid coordinate symbol - valid options are :polar or :rect")
     end
