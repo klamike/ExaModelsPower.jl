@@ -156,7 +156,3 @@ function c_ohms_law_dcopf(br, pf, va_f, va_t)
     b_val = -br.br_x / r2_x2
     return -b_val * (va_f - va_t) - pf
 end
-
-function c_active_power_balance_demand_dcopf(b)
-    return b.pd + b.gs
-end

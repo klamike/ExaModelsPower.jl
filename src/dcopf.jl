@@ -3,6 +3,7 @@ function build_dcopf(data, user_callback; backend = nothing, T = Float64, kwargs
 
     va = variable(core, length(data.bus))
     pg = variable(core, length(data.gen); lvar = data.pmin, uvar = data.pmax)
+    pd = parameter(core, convert_array([b.pd for b in data.bus], backend))
 
     branch_rate_a = [br.rate_a for br in data.branch]
     pf = variable(
@@ -31,7 +32,7 @@ function build_dcopf(data, user_callback; backend = nothing, T = Float64, kwargs
 
     c_active_power_balance = constraint(
         core,
-        c_active_power_balance_demand_dcopf(b) for b in data.bus
+        pd[b.i] + b.gs for b in data.bus
     )
     constraint!(core, c_active_power_balance, g.bus => -pg[g.i] for g in data.gen)
     constraint!(core, c_active_power_balance, br.f_bus => pf[br.i] for br in data.branch)
