@@ -6,11 +6,12 @@ using ExaPowerIO
 using JSON
 
 include("parser.jl")
+include("constraint.jl")
 include("opf.jl")
+include("dcopf.jl")
 include("goc3_parser.jl")
 include("scopf.jl")
 include("mpopf.jl")
-include("constraint.jl")
 include("sc_parser.jl")
 
 const NAMES = filter(names(@__MODULE__; all = true)) do x
