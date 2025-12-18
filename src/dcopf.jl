@@ -3,7 +3,7 @@ function build_dcopf(data, user_callback; backend = nothing, T = Float64, kwargs
 
     va = variable(core, length(data.bus))
     pg = variable(core, length(data.gen); lvar = data.pmin, uvar = data.pmax)
-    pd = parameter(w, map(b->b.pd, data.bus))
+    pd = parameter(core, map(b->b.pd, data.bus))
 
     branch_rate_a = [br.rate_a for br in data.branch]
     pf = variable(
