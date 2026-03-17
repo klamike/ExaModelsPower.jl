@@ -8,11 +8,12 @@ function build_dcopf(data; backend = nothing, T = Float64, core = nothing, kwarg
     pd = parameter(core, map(b->b.pd, data.bus))
     bs = parameter(core, map(dcopf_branch_b, data.branch))
 
+    rate_a = ifelse.(iszero.(data.rate_a), T(Inf), data.rate_a)
     pf = variable(
         core,
         length(data.branch);
-        lvar = -data.rate_a,
-        uvar = data.rate_a
+        lvar = -rate_a,
+        uvar = rate_a
     )
 
     o = objective(core, gen_cost(g, pg[g.i]) for g in data.gen)
